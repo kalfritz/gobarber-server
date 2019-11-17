@@ -3,6 +3,8 @@ import authConfig from '../../config/auth';
 import User from '../models/User';
 import File from '../models/File';
 
+import Cache from '../../lib/Cache';
+
 class UserController {
   async index(req, res) {
     const users = await User.findAll({});
@@ -24,6 +26,11 @@ class UserController {
     }
 
     const { id, name, email, provider } = await User.create(req.body);
+
+    if (provider) {
+      await Cache.invalidate('providers');
+    }
+
     return res.json({
       user: { id, name, email, provider },
       token: jwt.sign({ id }, authConfig.secret, {
@@ -59,6 +66,10 @@ class UserController {
     }
 
     await user.update(req.body);
+
+    if (user.provider) {
+      await Cache.invalidate('providers');
+    }
 
     const { id, name, avatar } = await User.findByPk(userId, {
       include: [
