@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import User from './app/models/User';
+import Brute from 'express-brute';
+import BruteRedis from 'express-brute-redis';
+
 import multer from 'multer';
 import multerConfig from './config/multer';
 
@@ -21,23 +23,24 @@ import authMiddleware from './app/middlewares/auth';
 
 const routes = new Router();
 const upload = multer(multerConfig);
-routes.get('/test', async (req, res) => {
-  try {
-    const user = await User.create({
-      name: 'Fabio',
-      email: 'fabioselau@rocketseat.com.br',
-      password_hash: '77777',
-    });
-    return res.json(user);
-  } catch (err) {
-    return res.json(err);
-  }
+
+const bruteStore = new BruteRedis({
+  host: process.env.REDIS_HOST,
+  port: process.env.REDIS_PORT,
 });
+
+const bruteForce = new Brute(bruteStore);
+
 routes.get('/users', UserController.index);
 routes.get('/users/:userId', UserController.show);
 routes.post('/users', validateUserStore, UserController.store);
 
-routes.post('/sessions', validateSessionStore, SessionController.store);
+routes.post(
+  '/sessions',
+  bruteForce.prevent,
+  validateSessionStore,
+  SessionController.store,
+);
 
 routes.use(authMiddleware);
 
